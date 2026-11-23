@@ -1,0 +1,21 @@
+version: '3.8'
+
+# Docker Compose configuration for Automated CI Test Execution (Assessment 11)
+services:
+  backend-test:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    environment:
+      NODE_ENV: test
+      USE_MEMORY_DB: "true"
+      JWT_SECRET: ci-test-secret-key-2026
+    command: ["npm", "test"]
+
+  analytics-test:
+    build:
+      context: ./analytics-service
+      dockerfile: ../docker/Dockerfile.analytics
+    environment:
+      PYTHONUNBUFFERED: 1
+    command: ["python", "-m", "pytest", "-v"]

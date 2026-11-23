@@ -1,0 +1,161 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MediCore Hospital & Patient Care Management API",
+    "description": "Enterprise Healthcare Operations REST API with RBAC, IDOR Defense, FHIR R4 Interoperability, and Concurrency Scheduling.",
+    "version": "1.0.0"
+  },
+  "servers": [
+    { "url": "http://localhost:5000/api/v1", "description": "Local Development API Server" },
+    { "url": "https://medicore.internal/api/v1", "description": "Production SSL Gateway" }
+  ],
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "email": { "type": "string", "format": "email" },
+          "role": { "type": "string", "enum": ["patient", "doctor", "nurse", "receptionist", "lab_tech", "billing_officer", "admin"] },
+          "fullName": { "type": "string" }
+        }
+      },
+      "Patient": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "mrn": { "type": "string", "example": "MRN-10001" },
+          "first_name": { "type": "string" },
+          "last_name": { "type": "string" },
+          "date_of_birth": { "type": "string", "format": "date" },
+          "gender": { "type": "string" },
+          "blood_type": { "type": "string" },
+          "allergies": { "type": "array", "items": { "type": "string" } }
+        }
+      },
+      "Appointment": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "patient_id": { "type": "string" },
+          "provider_id": { "type": "string" },
+          "scheduled_start": { "type": "string", "format": "date-time" },
+          "scheduled_end": { "type": "string", "format": "date-time" },
+          "status": { "type": "string", "enum": ["SCHEDULED", "CONFIRMED", "CHECKED_IN", "IN_PROGRESS", "COMPLETED", "CANCELLED", "NO_SHOW"] },
+          "reason": { "type": "string" }
+        }
+      },
+      "Encounter": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "string" },
+          "patient_id": { "type": "string" },
+          "provider_id": { "type": "string" },
+          "status": { "type": "string", "enum": ["IN_PROGRESS", "COMPLETED", "CANCELLED"] },
+          "chief_complaint": { "type": "string" },
+          "clinical_notes": { "type": "string" }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "error": {
+            "type": "object",
+            "properties": {
+              "code": { "type": "string" },
+              "message": { "type": "string" },
+              "requestId": { "type": "string" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Authenticate User Session",
+        "tags": ["Authentication"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["email", "password"],
+                "properties": {
+                  "email": { "type": "string", "example": "doctor.carter@medicore.internal" },
+                  "password": { "type": "string", "example": "Password123!" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Login successful with JWT token" },
+          "401": { "description": "Invalid credentials" }
+        }
+      }
+    },
+    "/appointments": {
+      "get": {
+        "summary": "List Appointments",
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Appointments"],
+        "parameters": [
+          { "name": "patientId", "in": "query", "schema": { "type": "string" } },
+          { "name": "status", "in": "query", "schema": { "type": "string" } }
+        ],
+        "responses": { "200": { "description": "List of appointments" } }
+      },
+      "post": {
+        "summary": "Book Appointment (With Overlap Prevention Guard)",
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Appointments"],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": ["patientId", "providerId", "scheduledStart", "reason"],
+                "properties": {
+                  "patientId": { "type": "string", "example": "pat-john-doe" },
+                  "providerId": { "type": "string", "example": "prov-carter" },
+                  "scheduledStart": { "type": "string", "format": "date-time" },
+                  "durationMinutes": { "type": "integer", "default": 30 },
+                  "reason": { "type": "string", "example": "Routine checkup" }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Appointment successfully booked" },
+          "409": { "description": "Schedule collision: Provider already booked during this time interval" }
+        }
+      }
+    },
+    "/fhir/export/{patientId}": {
+      "get": {
+        "summary": "Export Patient FHIR R4 Bundle",
+        "security": [{ "bearerAuth": [] }],
+        "tags": ["Interoperability (FHIR)"],
+        "parameters": [
+          { "name": "patientId", "in": "path", "required": true, "schema": { "type": "string" } }
+        ],
+        "responses": {
+          "200": { "description": "FHIR R4 Collection Bundle (Patient, Appointments, Encounters, Observations)" },
+          "403": { "description": "Data sharing consent required or unauthorized" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,120 @@
+name: MediCore Healthcare Platform CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  # 1. Backend Verification & Security Scan
+  backend-test:
+    name: Backend API Tests & Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: backend/package.json
+
+      - name: Install Dependencies
+        run: |
+          cd backend
+          npm ci
+
+      - name: Type-Check & Lint
+        run: |
+          cd backend
+          npx tsc --noEmit
+
+      - name: Run Automated Test Suites
+        run: |
+          cd backend
+          npm test -- --coverage
+        env:
+          NODE_ENV: test
+          USE_MEMORY_DB: "true"
+          JWT_SECRET: ci-test-secret-key-2026
+
+      - name: Security Vulnerability Audit
+        run: |
+          cd backend
+          npm audit --audit-level=critical || true
+
+  # 2. Python FastAPI Analytics Verification
+  analytics-test:
+    name: Python Analytics & Processing Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies
+        run: |
+          cd analytics-service
+          pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Run Pytest Suite
+        run: |
+          cd analytics-service
+          python -m pytest -v
+
+      - name: Run Correctness & Throughput Benchmark
+        run: |
+          cd analytics-service
+          python -m app.benchmark
+
+  # 3. Frontend Next.js Build
+  frontend-build:
+    name: Next.js Frontend Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: frontend/package.json
+
+      - name: Install Frontend Dependencies
+        run: |
+          cd frontend
+          npm ci
+
+      - name: Build Next.js Production App
+        run: |
+          cd frontend
+          npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1
+
+  # 4. Container Build & Staging Dry-Run
+  docker-validation:
+    name: Docker Environment & Container Packaging
+    needs: [ backend-test, analytics-test, frontend-build ]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Validate Docker Compose Configuration
+        run: |
+          docker compose config
+
+      - name: Build Container Images
+        run: |
+          docker compose build --parallel

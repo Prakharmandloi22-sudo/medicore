@@ -1,0 +1,73 @@
+{
+  "info": {
+    "name": "MediCore Hospital Management API",
+    "_postman_id": "c1f7a40b-789a-4123-b678-medicore-v1",
+    "description": "Comprehensive Postman test collection for MediCore Healthcare Platform (Assessment 13).",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Auth - Login as Doctor",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"email\": \"doctor.carter@medicore.internal\",\n  \"password\": \"Password123!\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+      }
+    },
+    {
+      "name": "Appointments - Book Slot",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"pat-john-doe\",\n  \"providerId\": \"prov-carter\",\n  \"scheduledStart\": \"2026-12-01T10:00:00Z\",\n  \"durationMinutes\": 30,\n  \"reason\": \"Routine cardiology follow-up\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/appointments", "host": ["{{baseUrl}}"], "path": ["appointments"] }
+      }
+    },
+    {
+      "name": "Appointments - Double Booking Collision Test (Capstone)",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{jwtToken}}" }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"patientId\": \"pat-emily-watson\",\n  \"providerId\": \"prov-carter\",\n  \"scheduledStart\": \"2026-12-01T10:00:00Z\",\n  \"durationMinutes\": 30,\n  \"reason\": \"Conflicting appointment slot\"\n}"
+        },
+        "url": { "raw": "{{baseUrl}}/appointments", "host": ["{{baseUrl}}"], "path": ["appointments"] }
+      }
+    },
+    {
+      "name": "FHIR - Export Patient Bundle",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{jwtToken}}" }],
+        "url": { "raw": "{{baseUrl}}/fhir/export/pat-john-doe", "host": ["{{baseUrl}}"], "path": ["fhir", "export", "pat-john-doe"] }
+      }
+    },
+    {
+      "name": "Audit Logs - Query Immutable Trail",
+      "request": {
+        "method": "GET",
+        "header": [{ "key": "Authorization", "value": "Bearer {{adminToken}}" }],
+        "url": { "raw": "{{baseUrl}}/audit-logs", "host": ["{{baseUrl}}"], "path": ["audit-logs"] }
+      }
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000/api/v1" },
+    { "key": "jwtToken", "value": "" },
+    { "key": "adminToken", "value": "" }
+  ]
+}

@@ -1,0 +1,28 @@
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+
+# Builds & Outputs
+dist/
+build/
+.next/
+out/
+coverage/
+*.log
+
+# Environment & Secrets
+.env
+.env.local
+.env.production
+*.pem
+*.key
+*.crt
+
+# IDE & OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
